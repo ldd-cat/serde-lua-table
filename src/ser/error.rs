@@ -8,8 +8,11 @@ pub enum SerError {
     Custom(String),
     #[error("Object key must be a string or a number")]
     KeyMustBeStringOrNumber,
-    #[error("Object key as identity can't be lua keyword: {0}")]
-    CannotUseLuaKeywordAsKey(String),
+    #[error("field {field:?} of struct {struct_name} is not a valid Lua name; rename it (e.g. with #[serde(rename = \"...\")])")]
+    InvalidFieldName {
+        struct_name: &'static str,
+        field: &'static str,
+    },
 }
 
 impl serde::ser::Error for SerError {

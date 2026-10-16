@@ -8,15 +8,6 @@ use serde::{
     Serialize,
 };
 use std::io;
-use phf::{phf_set, Set};
-
-static KEYWORDS: Set<&'static str> = phf_set! {
-    "local" | "function" | "do" | "return" | "end",
-    "for" | "in" | "while" | "repeat" | "util" | "break",
-    "if" | "then" | "elseif" | "else",
-    "and" | "or" | "not", 
-    "true" | "false" | "nil",
-};
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 enum State {
@@ -28,6 +19,8 @@ enum State {
 pub struct Compound<'a, W: 'a, F: 'a> {
     ser: &'a mut Serializer<W, F>,
     state: State,
+    /// Name of the struct being serialized, for error messages.
+    struct_name: &'static str,
 }
 
 impl<'a, W, F> Compound<'a, W, F> {
@@ -36,6 +29,7 @@ impl<'a, W, F> Compound<'a, W, F> {
         Self {
             state: State::Empty,
             ser,
+            struct_name: "",
         }
     }
     #[inline]
@@ -43,7 +37,13 @@ impl<'a, W, F> Compound<'a, W, F> {
         Self {
             state: State::First,
             ser,
+            struct_name: "",
         }
+    }
+    #[inline]
+    pub(crate) fn with_struct_name(mut self, name: &'static str) -> Self {
+        self.struct_name = name;
+        self
     }
     #[inline]
     fn not_empty(&self) -> bool {
@@ -194,6 +194,21 @@ where
     }
 }
 
+/// Reserved words of Lua 5.4; they can't be used as `name = value` keys.
+const KEYWORDS: [&str; 22] = [
+    "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if",
+    "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while",
+];
+
+/// Whether `key` can be written as `key = value`: a Lua name (letter or `_`,
+/// then letters, digits or `_`) that isn't a reserved word.
+pub(crate) fn is_name_key(key: &str) -> bool {
+    let mut chars = key.chars();
+    matches!(chars.next(), Some(c) if c == '_' || c.is_ascii_alphabetic())
+        && chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
+        && !KEYWORDS.contains(&key)
+}
+
 impl<'a, W, F> SerializeStruct for Compound<'a, W, F>
 where
     W: io::Write,
@@ -202,6 +217,9 @@ where
     type Ok = ();
     type Error = SerError;
 
+    /// Fields are written as `name = value`. A field name that isn't a Lua
+    /// name (renamed fields such as `"my-field"`, or keywords such as `end`)
+    /// is an error.
     fn serialize_field<T: ?Sized>(
         &mut self,
         key: &'static str,
@@ -210,8 +228,11 @@ where
     where
         T: Serialize,
     {
-        if KEYWORDS.contains(key) {
-            return Err(SerError::CannotUseLuaKeywordAsKey(key.to_string()));
+        if !is_name_key(key) {
+            return Err(SerError::InvalidFieldName {
+                struct_name: self.struct_name,
+                field: key,
+            });
         }
         self.ser
             .formatter

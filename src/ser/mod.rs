@@ -4,6 +4,8 @@ mod map_key_serializer;
 
 use crate::format::{format_escaped_str_contents, CompactFormatter, Formatter, PrettyFormatter};
 use compound::Compound;
+#[cfg(test)]
+pub(crate) use compound::is_name_key;
 pub use error::*;
 use serde::Serialize;
 use std::io;
@@ -263,15 +265,15 @@ impl<'a, W: io::Write, F: Formatter> serde::Serializer for &'a mut Serializer<W,
 
     fn serialize_struct(
         self,
-        _name: &'static str,
+        name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        self.serialize_map(Some(len))
+        Ok(self.serialize_map(Some(len))?.with_struct_name(name))
     }
 
     fn serialize_struct_variant(
         self,
-        _name: &'static str,
+        name: &'static str,
         _variant_index: u32,
         variant: &'static str,
         len: usize,
@@ -281,7 +283,7 @@ impl<'a, W: io::Write, F: Formatter> serde::Serializer for &'a mut Serializer<W,
         self.serialize_str(variant)?;
         self.formatter.end_object_key(&mut self.writer)?;
         self.formatter.begin_object_value(&mut self.writer)?;
-        self.serialize_map(Some(len))
+        Ok(self.serialize_map(Some(len))?.with_struct_name(name))
     }
 }
 
