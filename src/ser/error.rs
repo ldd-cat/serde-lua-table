@@ -8,6 +8,8 @@ pub enum SerError {
     Custom(String),
     #[error("Object key must be a string or a number")]
     KeyMustBeStringOrNumber,
+    #[error("Object key as identity can't be lua keyword: {0}")]
+    CannotUseLuaKeywordAsKey(String),
 }
 
 impl serde::ser::Error for SerError {

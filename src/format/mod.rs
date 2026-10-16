@@ -303,6 +303,25 @@ pub trait Formatter {
         writer.write_all(b"]")
     }
 
+    #[inline]
+    fn begin_field<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
+    where
+        W: ?Sized + Write,
+    {
+        if !first {
+            writer.write_all(b",")?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn end_field<W>(&mut self, _writer: &mut W) -> io::Result<()>
+    where
+        W: ?Sized + Write,
+    {
+        Ok(())
+    }
+
     /// Called before every object value.  A `=` should be written to
     /// the specified writer by either this method or
     /// `end_object_key`.

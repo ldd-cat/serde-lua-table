@@ -8,6 +8,15 @@ use serde::{
     Serialize,
 };
 use std::io;
+use phf::{phf_set, Set};
+
+static KEYWORDS: Set<&'static str> = phf_set! {
+    "local" | "function" | "do" | "return" | "end",
+    "for" | "in" | "while" | "repeat" | "util" | "break",
+    "if" | "then" | "elseif" | "else",
+    "and" | "or" | "not", 
+    "true" | "false" | "nil",
+};
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 enum State {
@@ -201,7 +210,16 @@ where
     where
         T: Serialize,
     {
-        SerializeMap::serialize_entry(self, key, value)
+        if KEYWORDS.contains(key) {
+            return Err(SerError::CannotUseLuaKeywordAsKey(key.to_string()));
+        }
+        self.ser
+            .formatter
+            .begin_field(&mut self.ser.writer, self.state == State::First)?;
+        self.state = State::Rest;
+        self.ser.formatter.write_string_fragment(&mut self.ser.writer, key)?;
+        self.ser.formatter.end_field(&mut self.ser.writer)?;
+        SerializeMap::serialize_value(self, value)
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {

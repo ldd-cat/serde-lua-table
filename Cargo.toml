@@ -19,6 +19,7 @@ serde = "1.0"
 thiserror = "1.0"
 ryu = "1"
 itoa = "1"
+phf = { version = "0.13.1", features = ["macros"] }
 
 [dev-dependencies]
 mlua = { version = "0.7.4", features = ["lua54", "vendored", "serialize"] }

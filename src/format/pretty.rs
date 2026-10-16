@@ -128,6 +128,27 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 
     #[inline]
+    fn begin_field<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
+    where
+        W: ?Sized + Write,
+    {
+        if first {
+            writer.write_all(b"\n")?;
+        } else {
+            writer.write_all(b",\n")?;
+        }
+        indent(writer, self.current_indent, self.indent)
+    }
+
+    #[inline]
+    fn end_field<W>(&mut self, writer: &mut W) -> io::Result<()>
+    where
+        W: ?Sized + Write,
+    {
+        writer.write_all(b" ")
+    }
+
+    #[inline]
     fn begin_object_value<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
         W: ?Sized + Write,

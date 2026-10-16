@@ -1,9 +1,9 @@
 #![warn(clippy::cargo)]
 
-mod format;
-mod ser;
+pub mod format;
+pub mod ser;
 
-pub use crate::ser::*;
+
 use crate::ser::{SerError, Serializer};
 use serde::Serialize;
 use std::io;
